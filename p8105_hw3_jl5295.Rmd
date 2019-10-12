@@ -9,6 +9,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
 library(p8105.datasets)
+library(ggplot2)
+library (knitr)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
 ```
 
 #Problem 1: Instacart
@@ -24,30 +32,85 @@ number_aisles =
   view()
 ```
 
-In the `instacart` dataset, there are 1,384,617 observations and 15 variables. 
-There are 134 unique aisles. The tope 3 aisles most ordered from are: "fresh vegetables", "fresh fruits", and "packaged vegetables fruits".
+In the `instacart` dataset, there are 1,384,617 observations and 15 variables. Some key variables in this dataset include `product_name`, `order_hour_of_day`, and `add_to_cart_order`.
+
+There are 134 unique aisles. The tope 3 aisles most ordered from are, from most ordered to least: "fresh vegetables" (150,609 orders), "fresh fruits" (150,473 orders), and "packaged vegetables fruits"(78,493 orders).
 
 Aisle Plot
 ```{r}
-number_ordered = number_aisles %>% 
-  filter(n > 10000 ) %>% 
-  ggplot(aes(
-    x = number_aisles, 
-    y = n,
-    fill = name)) + 
-  geom_density(alpha = .4, adjust = .5, color = "blue")
+aisle_plot = 
+  filter(number_aisles, n > 10000)
+
+ggplot(aisle_plot, aes(
+    x = reorder(aisle, -n), 
+    y = n)) +
+  geom_point(color = "red") +
+  theme (axis.text.x = element_text(angle = 90, hjust = 1),
+         axis.text = element_text(size=8)) +
+  labs (
+    title = "Plot of Number of Items in Each Aisle for Over 10,000 Items Ordered ",
+    x = "Aisle",
+    y = "Count of Items Ordered")
+```
+*Please note that plot is ordered by most number of orders to least.*
+
+Table Showing 3 Most Popular Items 
+```{r}
+table_pop_items = instacart %>% 
+  filter(
+    aisle == "baking ingredients" | 
+    aisle == "dog food care" | 
+    aisle == "packaged vegetables fruits") %>% 
+  group_by(aisle, product_name) %>% 
+  summarize (n = n()) %>% 
+  mutate (top_three = min_rank(desc(n))) %>% 
+  filter (top_three <= 3) %>% 
+  mutate(sort(top_three, decreasing = FALSE))
   
+table_pop_items %>% 
+  knitr::kable()
 ```
 
+Table Showing Pink Lady Apples and Coffee Ice Cream Orders
+
+Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table)
+```{r}
+table_apples_coffee = instacart %>% 
+  filter(
+    product_name == "Pink Lady Apples" | 
+    product_name == "Coffee Ice Cream") %>% 
+  group_by(product_name, order_hour_of_day, order_dow) %>% 
+  summarize(n = n()) %>% 
+  mutate (table_apple_coffee = mean(order_hour_of_day))
+
+table_apples_coffee %>% 
+  knitr::kable()
+```
 
 
 # Problem 2: BRFSS
 
 Loading & Data Cleaning:
 ```{r}
+data("brfss_smart2010")
+
+brfss = brfss_smart2010 %>% 
+  janitor::clean_names() %>% 
+  filter(
+    topic == "Overall Health" |
+    response == "Poor" | response == "Fair" | response == "Very Good" |response == "Excellent") %>% 
+  mutate(response = factor(response,labels = c("Poor", "Fair", "Good", "Very good", "Excellent"))) %>% 
+  select(-location_id, -data_value_footnote_symbol, -data_value_footnote)
+
+brfss
+```
+
+In 2002, which states were observed at 7 or more locations? What about in 2010?
+```{r}
 
 ```
 
+Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).
 
 
 

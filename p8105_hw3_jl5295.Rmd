@@ -11,6 +11,7 @@ library(tidyverse)
 library(p8105.datasets)
 library(ggplot2)
 library (knitr)
+library(viridis)
 
 knitr::opts_chunk$set(
   fig.width = 6,
@@ -19,7 +20,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-#Problem 1: Instacart
+## Problem 1: Instacart
 
 Load the data for Instacart and Exploration of Aisles
 ```{r}
@@ -31,9 +32,9 @@ number_aisles =
   arrange(desc(n)) %>% 
   view()
 ```
+**Description of Dataset:** In the `instacart` dataset, there are 1,384,617 observations and 15 variables. There are `r ncol(instacart)` columns in the dataset. Some key variables in this dataset include `product_name`, `order_hour_of_day`, and `add_to_cart_order`.
 
-In the `instacart` dataset, there are 1,384,617 observations and 15 variables. Some key variables in this dataset include `product_name`, `order_hour_of_day`, and `add_to_cart_order`.
-
+**How many aisles are there, and which aisles are the most items ordered from?**
 There are 134 unique aisles. The tope 3 aisles most ordered from are, from most ordered to least: "fresh vegetables" (150,609 orders), "fresh fruits" (150,473 orders), and "packaged vegetables fruits"(78,493 orders).
 
 Aisle Plot
@@ -44,7 +45,7 @@ aisle_plot =
 ggplot(aisle_plot, aes(
     x = reorder(aisle, -n), 
     y = n)) +
-  geom_point(color = "red") +
+  geom_point(aes(color = n)) +
   theme (axis.text.x = element_text(angle = 90, hjust = 1),
          axis.text = element_text(size=8)) +
   labs (
@@ -52,7 +53,7 @@ ggplot(aisle_plot, aes(
     x = "Aisle",
     y = "Count of Items Ordered")
 ```
-*Please note that plot is ordered by most number of orders to least.*
+*Please note that plot is ordered by most number of orders in each aisle to least to least number of orders in each aisle.*
 
 Table Showing 3 Most Popular Items 
 ```{r}
@@ -64,56 +65,120 @@ table_pop_items = instacart %>%
   group_by(aisle, product_name) %>% 
   summarize (n = n()) %>% 
   mutate (top_three = min_rank(desc(n))) %>% 
-  filter (top_three <= 3) %>% 
-  mutate(sort(top_three, decreasing = FALSE))
+  filter (top_three <= 3)
   
 table_pop_items %>% 
   knitr::kable()
 ```
 
 Table Showing Pink Lady Apples and Coffee Ice Cream Orders
-
-Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table)
 ```{r}
 table_apples_coffee = instacart %>% 
   filter(
     product_name == "Pink Lady Apples" | 
     product_name == "Coffee Ice Cream") %>% 
-  group_by(product_name, order_hour_of_day, order_dow) %>% 
-  summarize(n = n()) %>% 
-  mutate (table_apple_coffee = mean(order_hour_of_day))
+  group_by(product_name, order_dow) %>% 
+  summarize(
+    mean_order = round(mean(order_hour_of_day), digits = 0)) %>% 
+  pivot_wider(
+   names_from = "order_dow" , 
+   values_from = "mean_order")  %>% 
+  rename(
+    "Sunday" = "0", 
+    "Monday" = "1", 
+    "Tuesday" = "2", 
+    "Wednesday" = "3", 
+    "Thursday" = "4", 
+    "Friday" = "5", 
+    "Saturday" = "6") %>% 
+  rename ("Product Name" = product_name)
 
 table_apples_coffee %>% 
   knitr::kable()
 ```
 
 
-# Problem 2: BRFSS
+## Problem 2: BRFSS
 
 Loading & Data Cleaning:
 ```{r}
 data("brfss_smart2010")
 
 brfss = brfss_smart2010 %>% 
-  janitor::clean_names() %>% 
+  janitor::clean_names() %>%
   filter(
     topic == "Overall Health" |
-    response == "Poor" | response == "Fair" | response == "Very Good" |response == "Excellent") %>% 
-  mutate(response = factor(response,labels = c("Poor", "Fair", "Good", "Very good", "Excellent"))) %>% 
-  select(-location_id, -data_value_footnote_symbol, -data_value_footnote)
+    response == "Poor" | 
+    response == "Fair" |
+    response == "Very Good" |
+    response == "Excellent") %>%
+  select(-location_id, -data_value_footnote_symbol, -data_value_footnote) %>% 
+  mutate(response = ordered(response, c("Poor", "Fair", "Good", "Very good", "Excellent"))) 
 
 brfss
 ```
 
+
+
 In 2002, which states were observed at 7 or more locations? What about in 2010?
 ```{r}
+states_2002 = brfss %>% 
+  filter (year == "2002") %>% 
+  group_by(locationabbr) %>% 
+  summarize(
+    number_obs = n_distinct(geo_location)) %>% 
+  filter(number_obs >= 7) %>% 
+  rename("states" = locationabbr)
 
+states_2010 = brfss %>% 
+  filter (year == "2010") %>% 
+  group_by(locationabbr) %>% 
+  summarize(
+    number_obs = n_distinct(geo_location)) %>% 
+  filter(number_obs >= 7) %>% 
+  rename("states" = locationabbr)
+```
+In 2002, six states were observed at 7 or more locations: CT, FL, MA, NC, NJ, and PA. In 2010, fourteen states were observed at 7 or more locations: CA, CO, FL, MA, MD, NC, NE, NJ, NY, OH, PA, SC,TX, WA.
+
+Make Excellent Dataset:
+```{r}
+excellent_data = brfss %>% 
+  filter(response == "Excellent") %>% 
+  group_by(year, locationabbr) %>% 
+  summarize(mean_value = round(mean(data_value, na.rm = TRUE), digits = 2)) %>% 
+  rename("state" = locationabbr)
 ```
 
-Construct a dataset that is limited to Excellent responses, and contains, year, state, and a variable that averages the data_value across locations within a state. Make a “spaghetti” plot of this average value over time within a state (that is, make a plot showing a line for each state across years – the geom_line geometry and group aesthetic will help).
+Spaghetti Plot:
+```{r}
+spaghetti_plot = excellent_data %>% 
+  ggplot(aes(x = year, y = mean_value, color = state)) +
+  geom_line() +
+  labs(
+    title = "Spaghetti Plot of Average Value Over Time in 50 States",
+    x = "Year",
+    y = "Average Data Values"
+  )
+
+spaghetti_plot
+```
 
 
+## Problem 3: Accelerometers
+
+Loading, tidying, and wrangling the data 
+
+Your final dataset should include all originally observed variables and values; have useful variable names; include a weekday vs weekend variable; and encode data with reasonable variable classes. Describe the resulting dataset (e.g. what variables exist, how many observations, etc).
+```{r}
+prob_3 = read_csv("./data/accel_data.csv") %>% 
+  janitor::clean_names() %>% 
+  mutate(
+    day = factor(day, labels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")),
+    day_of_week = day == "Saturday" | day == "Sunday",
+    day_of_week = ifelse(day_of_week == TRUE, "Weekend", "Weekday"))
+  
+  
+prob_3
+```
 
 
-
-# Problem 3: 

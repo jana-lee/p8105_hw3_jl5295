@@ -53,7 +53,8 @@ ggplot(aisle_plot, aes(
     x = "Aisle",
     y = "Count of Items Ordered")
 ```
-*Please note that plot is ordered by most number of orders in each aisle to least to least number of orders in each aisle.*
+Please note that plot is ordered by most number of orders in each aisle to least to least number of orders in each aisle.
+
 
 Table Showing 3 Most Popular Items 
 ```{r}
@@ -216,4 +217,3 @@ accel_plot = accel_data %>%
 accel_plot
 ```
 Similar to what we noticed in the previous problem, we can see here that Monday's activity count was very low, but increased over the 5-week period. Contrastingly, Saturday and Sunday's activity counts started high, but decreased over the 5-week period.
-
